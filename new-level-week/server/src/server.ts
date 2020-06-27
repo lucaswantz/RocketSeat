@@ -1,12 +1,10 @@
 import express from "express";
+import routes from "./routes";
 
 const app = express();
 
-app.get("/users", (requiest, response) => {
-  console.log("Listagem de usuários");
-
-  // JSON
-  response.json(["Gessica", "Helen", "Lucas", "Bruno"]);
-});
+// Indica para entender o corpo da requisição em formato JSON
+app.use(express.json());
+app.use(routes);
 
 app.listen(3333);
