@@ -1,10 +1,15 @@
 import express from "express";
+import cors from "cors";
+import path from "path";
 import routes from "./routes";
 
 const app = express();
 
-// Indica para entender o corpo da requisição em formato JSON
+app.use(cors());
 app.use(express.json());
 app.use(routes);
+
+// Disponibiliza as imagens da pasta upload
+app.use("/uploads", express.static(path.resolve(__dirname, "..", "uploads")));
 
 app.listen(3333);
