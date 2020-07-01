@@ -1,8 +1,8 @@
-import React, { useEffect, useState, ChangeEvent } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState, ChangeEvent, FormEvent } from "react";
+import { Link, useHistory } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import { Map, TileLayer, Marker } from "react-leaflet";
-import { LeafletMouseEvent, LatLngLiteral } from "leaflet";
+import { LeafletMouseEvent } from "leaflet";
 import axios from "axios";
 import api from "../../services/api";
 
@@ -28,6 +28,11 @@ interface IBGECityResponse {
 const CreatePoint = () => {
   // Quando cria estado para array ou objeto, precisa manualmente informar o tipo da variável
   const [items, setItems] = useState<Item[]>([]);
+  const [inputData, setInputData] = useState({
+    name: "",
+    email: "",
+    whatsapp: "",
+  });
 
   const [ufs, setUfs] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
@@ -35,7 +40,10 @@ const CreatePoint = () => {
 
   const [selectedUf, setSelectedUf] = useState("0");
   const [selectedCity, setSelectedCity] = useState("0");
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const [selectedPos, setSelectedPos] = useState<[number, number]>([0, 0]);
+
+  const history = useHistory();
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((position) => {
@@ -93,6 +101,48 @@ const CreatePoint = () => {
     setSelectedPos([latlng.lat, latlng.lng]);
   }
 
+  function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
+    // Vai subistituir dinamicamente apenas a informação do input da tela
+    const { name, value } = event.target;
+    setInputData({ ...inputData, [name]: value });
+  }
+
+  function handleSelectedItem(id: number) {
+    const alreadySelected = selectedItems.findIndex((item) => item === id);
+
+    if (alreadySelected >= 0) {
+      const filteredItems = selectedItems.filter((item) => item !== id);
+      setSelectedItems(filteredItems);
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+
+    const { name, email, whatsapp } = inputData;
+    const uf = selectedUf;
+    const city = selectedCity;
+    const [latitude, longitude] = selectedPos;
+    const items = selectedItems;
+
+    const data = {
+      name,
+      email,
+      whatsapp,
+      state: uf,
+      city,
+      latitude,
+      longitude,
+      items,
+    };
+
+    await api.post("points", data);
+    alert("Ponto de coleta criado");
+    history.push("/");
+  }
+
   return (
     <div id="page-create-point">
       <header>
@@ -103,7 +153,7 @@ const CreatePoint = () => {
         </Link>
       </header>
 
-      <form>
+      <form onSubmit={handleSubmit}>
         <h1>
           Cadastro do <br />
           ponto de coleta
@@ -115,17 +165,32 @@ const CreatePoint = () => {
           </legend>
           <div className="field">
             <label htmlFor="name">Nome da entidade</label>
-            <input type="text" name="name" id="name" />
+            <input
+              type="text"
+              name="name"
+              id="name"
+              onChange={handleInputChange}
+            />
           </div>
 
           <div className="field-group">
             <div className="field">
               <label htmlFor="email">E-mail</label>
-              <input type="email" name="email" id="email" />
+              <input
+                type="email"
+                name="email"
+                id="email"
+                onChange={handleInputChange}
+              />
             </div>
             <div className="field">
-              <label htmlFor="Whatsapp">Whatsapp</label>
-              <input type="text" name="Whatsapp" id="Whatsapp" />
+              <label htmlFor="whatsapp">Whatsapp</label>
+              <input
+                type="text"
+                name="whatsapp"
+                id="whatsapp"
+                onChange={handleInputChange}
+              />
             </div>
           </div>
         </fieldset>
@@ -189,7 +254,11 @@ const CreatePoint = () => {
 
           <ul className="items-grid">
             {items.map((item) => (
-              <li key={item.id}>
+              <li
+                key={item.id}
+                onClick={() => handleSelectedItem(item.id)}
+                className={selectedItems.includes(item.id) ? "selected" : ""}
+              >
                 <img src={item.image_url} alt={item.title} />
                 <span>{item.title}</span>
               </li>
