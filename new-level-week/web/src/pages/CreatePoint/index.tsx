@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import { Map, TileLayer, Marker } from "react-leaflet";
+import { LeafletMouseEvent, LatLngLiteral } from "leaflet";
+import axios from "axios";
 import api from "../../services/api";
 
 import "./styles.css";
@@ -15,15 +17,81 @@ interface Item {
   image_url: string;
 }
 
+interface IBGEUFResponse {
+  sigla: string;
+}
+
+interface IBGECityResponse {
+  nome: string;
+}
+
 const CreatePoint = () => {
   // Quando cria estado para array ou objeto, precisa manualmente informar o tipo da variável
   const [items, setItems] = useState<Item[]>([]);
+
+  const [ufs, setUfs] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [pos, setPos] = useState<[number, number]>([0, 0]);
+
+  const [selectedUf, setSelectedUf] = useState("0");
+  const [selectedCity, setSelectedCity] = useState("0");
+  const [selectedPos, setSelectedPos] = useState<[number, number]>([0, 0]);
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      setPos([latitude, longitude]);
+    });
+  }, []);
 
   useEffect(() => {
     api.get("items").then((response) => {
       setItems(response.data);
     });
   }, []);
+
+  useEffect(() => {
+    axios
+      .get<IBGEUFResponse[]>(
+        "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
+      )
+      .then((response) => {
+        const ufInitials = response.data.map((uf) => uf.sigla);
+        ufInitials.sort();
+        setUfs(ufInitials);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (selectedUf === "0") {
+      return;
+    }
+
+    axios
+      .get<IBGECityResponse[]>(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios`
+      )
+      .then((response) => {
+        const cityNames = response.data.map((city) => city.nome);
+        cityNames.sort();
+        setCities(cityNames);
+      });
+  }, [selectedUf]);
+
+  function handleSelectedUf(event: ChangeEvent<HTMLSelectElement>) {
+    const uf = event.target.value;
+    setSelectedUf(uf);
+  }
+
+  function handleSelectedCity(event: ChangeEvent<HTMLSelectElement>) {
+    const city = event.target.value;
+    setSelectedCity(city);
+  }
+
+  function handleMapSelection(event: LeafletMouseEvent) {
+    const latlng = event.latlng;
+    setSelectedPos([latlng.lat, latlng.lng]);
+  }
 
   return (
     <div id="page-create-point">
@@ -68,26 +136,46 @@ const CreatePoint = () => {
             <span>Selecione o endereço no mapa</span>
           </legend>
 
-          <Map center={[-29.2921359, -51.4962204]} zoom={15}>
+          <Map center={pos} zoom={15} onClick={handleMapSelection}>
             <TileLayer
               attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            <Marker position={[-29.2921359, -51.4962204]} />
+            <Marker position={selectedPos} />
           </Map>
 
           <div className="field-group">
             <div className="field">
               <label htmlFor="state">Estado</label>
-              <select name="state" id="state">
+              <select
+                name="state"
+                id="state"
+                value={selectedUf}
+                onChange={handleSelectedUf}
+              >
                 <option value="0">Selecione um estado</option>
+                {ufs.map((uf) => (
+                  <option key={uf} value={uf}>
+                    {uf}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="field">
               <label htmlFor="city">Cidade</label>
-              <select name="city" id="city">
+              <select
+                name="city"
+                id="city"
+                value={selectedCity}
+                onChange={handleSelectedCity}
+              >
                 <option value="0">Selecione uma cidade</option>
+                {cities.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
