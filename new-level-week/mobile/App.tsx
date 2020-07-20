@@ -7,7 +7,7 @@ import { Ubuntu_700Bold, useFonts } from "@expo-google-fonts/ubuntu";
 
 import Routes from "./src/routes";
 
-// CONTINUA EM 54:24
+// CONTINUAR NO MINUTO 1:24:40
 
 export default function App() {
   const [fontsLoaded] = useFonts({
